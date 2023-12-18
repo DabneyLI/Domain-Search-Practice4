@@ -1,6 +1,6 @@
 // pages/results.js
-import { useRouter } from 'next/router';
-import NodeCache from 'node-cache';
+import { useRouter } from "next/router";
+import NodeCache from "node-cache";
 
 // 设置缓存存活时间为24小时（24h x 60min x 60s）
 const cache = new NodeCache({ stdTTL: 24 * 60 * 60 });
@@ -9,9 +9,13 @@ export default function Results({ data }) {
   const router = useRouter();
   const { query } = router.query;
 
-  const resultItems = data && Object.entries(data).map(([key, value]) => (
-    <li key={key}>{key}: {value.toString()}</li>
-  ));
+  const resultItems =
+    data &&
+    Object.entries(data).map(([key, value]) => (
+      <li key={key}>
+        {key}: {value.toString()}
+      </li>
+    ));
 
   return (
     <div>
@@ -29,7 +33,7 @@ export async function getServerSideProps(context) {
   // 检查缓存中是否有数据
   const cachedData = cache.get(query);
   if (cachedData) {
-    console.log('Returning cached data for:', query);
+    console.log("Returning cached data for:", query);
     return { props: { data: cachedData } };
   }
 
