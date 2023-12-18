@@ -22,11 +22,23 @@ export default async function handler(req, res) {
         );
 
         if (recentRecord) {
-            // Return domain and its related data, no new record in Supabase
+            // Update the timestamp of the recent record
+            const updatedTimestamp = new Date().toISOString();
+            const { error: updateError } = await supabase
+                .from('queries')
+                .update({ timestamp: updatedTimestamp })
+                .match({ id: recentRecord.id }); // Assuming the table has an 'id' column
+
+            if (updateError) {
+                console.error('Error updating timestamp in Supabase:', updateError);
+                throw updateError;
+            }
+
+            // Return domain and its registered status, with updated timestamp
             return res.status(200).json({ 
                 domain: query, 
                 isRegistered: recentRecord.registered,
-                additionalInfo: recentRecord // or specify the fields you want to return
+                updatedTimestamp
             });
         } else {
             // Perform a WHOIS lookup and log data into Supabase
@@ -41,9 +53,13 @@ export default async function handler(req, res) {
             const isRegistered = whoisData.status !== 'available';
 
             // Log the new data into Supabase
-            const { error: insertError } = await supabase.from('queries').insert([
-                { domain: query, registered: isRegistered, timestamp: new Date().toISOString() }
-            ]);
+            const newRecord = {
+                domain: query, 
+                registered: isRegistered, 
+                timestamp: new Date().toISOString()
+            };
+
+            const { error: insertError } = await supabase.from('queries').insert([newRecord]);
 
             if (insertError) {
                 console.error('Error saving to Supabase:', insertError);
