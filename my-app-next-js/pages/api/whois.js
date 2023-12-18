@@ -5,7 +5,7 @@ export default async function handler(req, res) {
     const [name, suffix] = query.split('.');
 
     try {
-        // Step 1: Compare search input with each existing item of domain column in Supabase table
+        // Compare search input with each existing item of domain column in Supabase table
         let { data: records, error } = await supabase
             .from('queries')
             .select('*')
@@ -16,16 +16,20 @@ export default async function handler(req, res) {
             return res.status(500).json({ error: error.message });
         }
 
-        // Step 2: Check if any record matches and is within the last 24 hours
+        // Check if any record matches and is within the last 24 hours
         const recentRecord = records.find(record => 
             new Date() - new Date(record.timestamp) < 86400000 // 24 hours in milliseconds
         );
 
         if (recentRecord) {
-            // Step 3: Return domain and registered status, no new record in Supabase
-            return res.status(200).json({ domain: query, isRegistered: recentRecord.registered });
+            // Return domain and its related data, no new record in Supabase
+            return res.status(200).json({ 
+                domain: query, 
+                isRegistered: recentRecord.registered,
+                additionalInfo: recentRecord // or specify the fields you want to return
+            });
         } else {
-            // Step 4: Perform a WHOIS lookup and log data into Supabase
+            // Perform a WHOIS lookup and log data into Supabase
             const apiUrl = `https://whois.freeaiapi.xyz/?name=${name}&suffix=${suffix}`;
             const response = await fetch(apiUrl);
         
