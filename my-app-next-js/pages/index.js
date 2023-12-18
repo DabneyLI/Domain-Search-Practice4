@@ -1,43 +1,61 @@
-import React, { useEffect, useState } from 'react';
-import { supabase } from '../utils/supabaseClient';
+import React, { useEffect, useState } from "react";
+import queryDomain from "./api/whois";
+import { supabase } from "../utils/supabaseClient";
 
-export default function Home() {
-    const [history, setHistory] = useState([]);
+const DomainChecker = () => {
+  const [domain, setDomain] = useState("");
+  const [recentDomains, setRecentDomains] = useState([]);
 
-    useEffect(() => {
-        async function fetchHistory() {
-            const { data, error } = await supabase
-                .from('queries')
-                .select('*')
-                .order('timestamp', { ascending: false })
-                .limit(20);
+  useEffect(() => {
+    getRecentDomains().then(setRecentDomains);
+  }, []);
 
-            if (error) {
-                console.error('Error fetching history:', error);
-            } else {
-                setHistory(data);
-            }
-        }
-
-        fetchHistory();
-    }, []);
-
-    return (
-        <div>
-            <h1>WHOIS Query</h1>
-            <form action="/api/whois" method="get" target="_blank">
-                <input name="query" type="search" placeholder="Enter domain" required />
-                <button type="submit">Search</button>
-            </form>
-
-            <h2>Recent Queries</h2>
-            <ul>
-                {history.map((item, index) => (
-                    <li key={index}>
-                        {item.domain} - {item.registered ? 'Registered' : 'Not Registered'}
-                    </li>
-                ))}
-            </ul>
-        </div>
+  const handleSubmit = async (event) => {
+    event.preventDefault();
+    const [name, suffix] = domain.split(".");
+    const whoisData = await queryDomain(name, suffix);
+    window.open(
+      `data:text/json,${encodeURIComponent(JSON.stringify(whoisData))}`,
+      "_blank",
     );
-}
+  };
+
+  async function getRecentDomains() {
+    let { data: domains, error } = await supabase
+      .from("queries")
+      .select("domain, registered")
+      .order("timestamp", { ascending: false })
+      .limit(20);
+
+    if (error) {
+      console.error("Error fetching recent domains:", error);
+      return [];
+    }
+
+    return domains.filter((d) => d.registered); // 只返回已注册的域名
+  }
+
+  return (
+    <div>
+      <form onSubmit={handleSubmit}>
+        <input
+          type="text"
+          value={domain}
+          onChange={(e) => setDomain(e.target.value)}
+          placeholder="请输入域名"
+        />
+        <button type="submit">查询</button>
+      </form>
+      <div>
+        最近查询的域名:
+        {recentDomains.map((d, i) => (
+          <div key={i}>
+            {d.domain} - {d.registered ? "已注册" : "未注册"}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+};
+
+export default DomainChecker;
