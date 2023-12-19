@@ -1,78 +1,61 @@
-// This code assumes you have a state hook for your search input and a state hook for the history.
-import React, { useState, useEffect } from 'react';
-import { supabase } from '../utils/supabaseClient'; // Adjust the import path if necessary
+import React, { useEffect, useState } from "react";
+import { supabase } from "../utils/supabaseClient";
 
-const IndexPage = () => {
-  const [searchInput, setSearchInput] = useState('');
+export default function Home() {
   const [history, setHistory] = useState([]);
-
-  // Function to fetch the history of searches
-  const fetchHistory = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('queries')
-        .select('*')
-        .order('created_at', { ascending: false })
-        .limit(20);
-      
-      if (error) throw error;
-      
-      setHistory(data);
-    } catch (error) {
-      console.error('Error fetching history:', error);
-    }
-  };
-
-  // Function to perform the WHOIS search
-  const performSearch = async (event) => {
-    event.preventDefault(); // Prevent page reload on form submission
-
-    try {
-      const response = await fetch('/api/whois', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ domain: searchInput }),
-      });
-
-      if (response.ok) {
-        fetchHistory(); // Refresh the history after a successful search
-      } else {
-        const errorData = await response.json();
-        console.error('Search failed:', errorData.error);
-      }
-    } catch (error) {
-      console.error('Error performing search:', error);
-    }
-  };
+  const [searchQuery, setSearchQuery] = useState("");
 
   useEffect(() => {
-    fetchHistory(); // Fetch the history when the component mounts
+    fetchHistory();
   }, []);
+
+  const fetchHistory = async () => {
+    const { data, error } = await supabase
+      .from("queries")
+      .select("*")
+      .order("timestamp", { ascending: false })
+      .limit(20);
+
+    if (error) {
+      console.error("Error fetching history:", error);
+    } else {
+      setHistory(data);
+    }
+  };
+
+  const handleSearch = async (e) => {
+    e.preventDefault();
+    const response = await fetch(`/api/whois?query=${searchQuery}`);
+    if (response.ok) {
+      fetchHistory(); // Refresh history after search
+    } else {
+      console.error("Error performing WHOIS lookup");
+    }
+  };
 
   return (
     <div>
-      <form onSubmit={performSearch}>
-        <input
-          type="text"
-          value={searchInput}
-          onChange={(e) => setSearchInput(e.target.value)}
-          placeholder="Enter a domain to search"
+      <h1>WHOIS Query</h1>
+      <form onSubmit={handleSearch}>
+        <input 
+          name="query" 
+          type="search" 
+          placeholder="Enter domain" 
+          required 
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
         />
         <button type="submit">Search</button>
       </form>
 
-      <div>
-        <h2>Recent Searches:</h2>
-        <ul>
-          {history.map((record, index) => (
-            <li key={index}>{record.domain} - {record.is_registered ? 'Registered' : 'Available'}</li>
-          ))}
-        </ul>
-      </div>
+      <h2>Recent Queries</h2>
+      <ul>
+        {history.map((item, index) => (
+          <li key={index}>
+            {item.domain} - {item.registered ? "Registered" : "Not Registered"}
+          </li>
+        ))}
+      </ul>
     </div>
   );
-};
-
-export default IndexPage;
+}
