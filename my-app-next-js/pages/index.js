@@ -1,50 +1,78 @@
-// Inside your index.js or wherever your search component is
+// This code assumes you have a state hook for your search input and a state hook for the history.
+import React, { useState, useEffect } from 'react';
+import { supabase } from '../utils/supabaseClient'; // Adjust the import path if necessary
 
-// ... other imports
-import { useEffect, useState } from 'react';
-
-const fetchHistory = async () => {
-  // Fetch the updated history and set it in the state
-  const response = await fetch('/api/history');
-  const data = await response.json();
-  if (response.ok) {
-    setHistory(data);
-  } else {
-    console.error('Error fetching history');
-  }
-};
-
-const SearchComponent = () => {
-  // ... existing state and other hooks
-
+const IndexPage = () => {
+  const [searchInput, setSearchInput] = useState('');
   const [history, setHistory] = useState([]);
 
-  useEffect(() => {
-    // Initially fetch the history when the component mounts
-    fetchHistory();
-  }, []);
-
-  const performSearch = async (domain) => {
+  // Function to fetch the history of searches
+  const fetchHistory = async () => {
     try {
-      // Perform the WHOIS lookup
-      const response = await fetch('/api/whois?query=' + domain);
-      const data = await response.json();
+      const { data, error } = await supabase
+        .from('queries')
+        .select('*')
+        .order('created_at', { ascending: false })
+        .limit(20);
+      
+      if (error) throw error;
+      
+      setHistory(data);
+    } catch (error) {
+      console.error('Error fetching history:', error);
+    }
+  };
+
+  // Function to perform the WHOIS search
+  const performSearch = async (event) => {
+    event.preventDefault(); // Prevent page reload on form submission
+
+    try {
+      const response = await fetch('/api/whois', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ domain: searchInput }),
+      });
+
       if (response.ok) {
-        // If the search was successful, refresh the history
-        fetchHistory();
+        fetchHistory(); // Refresh the history after a successful search
       } else {
-        console.error('Error during WHOIS lookup:', data.error);
+        const errorData = await response.json();
+        console.error('Search failed:', errorData.error);
       }
     } catch (error) {
       console.error('Error performing search:', error);
     }
   };
 
-  // ... your JSX including the search input and submit button
+  useEffect(() => {
+    fetchHistory(); // Fetch the history when the component mounts
+  }, []);
 
   return (
-    // ... your JSX
+    <div>
+      <form onSubmit={performSearch}>
+        <input
+          type="text"
+          value={searchInput}
+          onChange={(e) => setSearchInput(e.target.value)}
+          placeholder="Enter a domain to search"
+        />
+        <button type="submit">Search</button>
+      </form>
+
+      <div>
+        <h2>Recent Searches:</h2>
+        <ul>
+          {history.map((record, index) => (
+            <li key={index}>{record.domain} - {record.is_registered ? 'Registered' : 'Available'}</li>
+          ))}
+        </ul>
+      </div>
+    </div>
   );
 };
 
-export default SearchComponent;
+export default IndexPage;
