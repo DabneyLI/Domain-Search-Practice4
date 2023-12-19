@@ -50,14 +50,24 @@ export default async function handler(req, res) {
             }
         
             const whoisData = await response.json();
-            const isRegistered = whoisData.status !== 'available';
+            // Check if the status information was successfully retrieved
+            const statusOk = whoisData.status === "ok";
 
             // Log the new data into Supabase
             const newRecord = {
-                domain: query, 
-                registered: isRegistered, 
-                timestamp: new Date().toISOString()
-            };
+                domain: whoisData.domain, // domain name
+                registered: whoisData.available === false, // registration status
+                creationDate: whoisData.creation_datetime, // domain creation date
+                expiryDate: whoisData.expiry_datetime, // domain expiry date
+                registrarName: whoisData.info.match(/Registrar: (.+)/)[1], // registrar name
+                whoisServer: whoisData.info.match(/WHOIS Server: (.+)/)[1], // WHOIS server
+                updatedDate: whoisData.info.match(/Updated Date: (.+)/)[1], // last updated date
+                registrarContactEmail: whoisData.info.match(/Registrar Abuse Contact Email: (.+)/)[1], // registrar contact email
+                registrarContactPhone: whoisData.info.match(/Registrar Abuse Contact Phone: (.+)/)[1], // registrar contact phone
+                nameServers: whoisData.info.match(/Name Server: (.+)/g), // array of name servers
+                domainStatus: whoisData.info.match(/Domain Status: (.+)/)[1], // domain status
+                timestamp: new Date().toISOString(), // current timestamp
+              };
 
             const { error: insertError } = await supabase.from('queries').insert([newRecord]);
 
