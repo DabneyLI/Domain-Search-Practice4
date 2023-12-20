@@ -22,6 +22,20 @@ export default function Home() {
     fetchHistory();
   }, []);
 
+  const handleSubmit = async (event) => {
+    event.preventDefault(); // 阻止表单默认提交行为
+    const { data, error } = await supabase
+      .from("queries")
+      .insert([{ domain: query }]); // 使用 Supabase 客户端发送数据到后端
+
+    if (error) {
+      console.error("Error submitting query:", error);
+    } else {
+      setQuery(""); // 清空查询输入
+      fetchHistory(); // 重新获取历史记录
+    }
+  };
+
   return (
     <div>
       <h1>WHOIS Query</h1>
