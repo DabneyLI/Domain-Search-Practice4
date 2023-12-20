@@ -72,7 +72,7 @@ export default async function handler(req, res) {
       } else {
         newRecord = {
           domain: whoisData.domain, // domain name
-          registered: whoisData.available, // registration status
+          registered: whoisData.available === false, // registration status
           timestamp: new Date().toISOString(), // current timestamp
         };
       }
