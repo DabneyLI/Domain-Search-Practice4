@@ -3,44 +3,48 @@ import { supabase } from "../utils/supabaseClient";
 
 export default function Home() {
   const [history, setHistory] = useState([]);
+  const [query, setQuery] = useState("");
+  const [result, setResult] = useState(null);
+
+  // 将 fetchHistory 函数定义移到 useEffect 外部
+  async function fetchHistory() {
+    const { data, error } = await supabase
+      .from("queries")
+      .select("*")
+      .order("timestamp", { ascending: false })
+      .limit(20);
+
+    if (error) {
+      console.error("Error fetching history:", error);
+    } else {
+      setHistory(data);
+    }
+  }
 
   useEffect(() => {
-    async function fetchHistory() {
-      const { data, error } = await supabase
-        .from("queries")
-        .select("*")
-        .order("timestamp", { ascending: false })
-        .limit(20);
-
-      if (error) {
-        console.error("Error fetching history:", error);
-      } else {
-        setHistory(data);
-      }
-    }
-
     fetchHistory();
   }, []);
 
   const handleSubmit = async (event) => {
-    event.preventDefault(); // 阻止表单默认提交行为
-    const { data, error } = await supabase
-      .from("queries")
-      .insert([{ domain: query }]); // 使用 Supabase 客户端发送数据到后端
-
-    if (error) {
-      console.error("Error submitting query:", error);
-    } else {
-      setQuery(""); // 清空查询输入
-      fetchHistory(); // 重新获取历史记录
-    }
+    event.preventDefault();
+    const response = await fetch(`/api/whois?query=${query}`);
+    const data = await response.json();
+    setResult(data); // 将结果存储在状态中
+    setQuery(""); // 清空查询输入
+    await fetchHistory(); // 重新获取历史记录
   };
 
   return (
     <div>
       <h1>WHOIS Query</h1>
-      <form action="/api/whois" method="get" target="_blank">
-        <input name="query" type="search" placeholder="Enter domain" required />
+      <form onSubmit={handleSubmit}>
+        <input
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          type="search"
+          placeholder="Enter domain"
+          required
+        />
         <button type="submit">Search</button>
       </form>
 
@@ -52,6 +56,14 @@ export default function Home() {
           </li>
         ))}
       </ul>
+
+      {result && (
+        <div>
+          <h2>Query Result</h2>
+          {/* 在这里展示查询结果，您可以根据需要调整展示方式 */}
+          <p>{JSON.stringify(result, null, 2)}</p>
+        </div>
+      )}
     </div>
   );
 }
